@@ -1,0 +1,19 @@
+// CLI (native) — stdin の各行を maxLen=20 でチャンク分割し "行\tchunk数\t先頭chunk" を出す。
+import self as pg
+import io
+import string
+import list
+import int
+
+effect fn main() -> Unit = {
+  var open = true
+  while open {
+    let line = io.read_line()
+    if string.trim(line) == "" then { open = false }
+    else {
+      let t = string.trim(line)
+      let chunks = pg.split(t, 20)
+      println(int.to_string(list.len(chunks)) + "\t" + (list.get(chunks, 0) ?? ""))
+    }
+  }
+}

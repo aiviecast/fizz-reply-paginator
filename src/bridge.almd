@@ -1,0 +1,34 @@
+// wasm — ブラウザの ReplyCard から呼ぶ。text を線形メモリに書き (pg_alloc)、
+// pg_paginate(maxLen) が分割位置(累積終端 char index)を計算して件数を返す →
+// pg_cut_at(i) で各位置を取得。ブラウザは text をその位置で slice してチャンク化する。
+// 部分文字列を wasm 越しに返さない(string-rc 問題回避)。Int 列だけ返す。
+import self as pg
+import bytes
+import float
+import int
+import list
+
+var g_text: Bytes = bytes.new(0)
+var g_cuts: List[Int] = []
+
+@export(wasm, "pg_alloc")
+fn pg_alloc(len: Float) -> RawPtr = {
+  g_text = bytes.new(float.to_int(len))
+  bytes.as_mut_ptr(g_text)
+}
+
+@export(wasm, "pg_paginate")
+fn pg_paginate(max_len: Float) -> Float = {
+  g_cuts = pg.cut_points(bytes.to_string_lossy(g_text), float.to_int(max_len))
+  int.to_float(list.len(g_cuts))
+}
+
+@export(wasm, "pg_cut_at")
+fn pg_cut_at(i: Float) -> Float = int.to_float(list.get(g_cuts, float.to_int(i)) ?? (0 - 1))
+
+effect fn main() -> Unit = {
+  let _a = pg_alloc(1.0)
+  let _b = pg_paginate(10.0)
+  let _c = pg_cut_at(0.0)
+  ()
+}

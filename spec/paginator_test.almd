@@ -1,0 +1,29 @@
+import self as p
+import list
+import string
+
+test "short text → single chunk" {
+  assert_eq(p.chunk_count("hello", 20), 1)
+  assert_eq(list.len(p.split("hello", 20)), 1)
+}
+test "splits at hard break (。) in the back window" {
+  // maxLen=10, text="あいう。えおかきくけこ" (11 chars)。窓[5..10] の 。(idx3? no)
+  let chunks = p.split("あいうえお。かきくけこさ", 10)   // 12 chars, 。at idx5
+  assert(list.len(chunks) == 2)
+  assert_eq(list.get(chunks, 0) ?? "", "あいうえお。")   // 。の後で切れる
+}
+test "cut_points are cumulative end indices" {
+  let pts = p.cut_points("あいうえお。かきくけこさ", 10)
+  assert_eq(list.get(pts, 0) ?? 0, 6)    // "あいうえお。" = 6 chars
+  assert_eq(list.get(pts, 1) ?? 0, 12)   // 全 12 chars
+}
+test "soft break (、) when no hard break" {
+  let chunks = p.split("あいうえお、かきくけこさ", 10)   // 。無し、、at idx5
+  assert(list.len(chunks) == 2)
+  assert_eq(list.get(chunks, 0) ?? "", "あいうえお、")
+}
+test "hard cut when no break in window" {
+  let chunks = p.split("あいうえおかきくけこさしすせそ", 10)   // break 無し 15 chars
+  assert(list.len(chunks) == 2)
+  assert_eq(string.len(list.get(chunks, 0) ?? ""), 10)   // maxLen で強制カット
+}

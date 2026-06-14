@@ -1,0 +1,4 @@
+[package]
+name = "fizz_reply_paginator"
+version = "0.1.0"
+description = "Fizz reply paginator — split AI reply text into display chunks at sentence/clause boundaries (priority: hard breaks 。！？ then soft 、 then hard cut). One Almide core, native + wasm (cut positions)."

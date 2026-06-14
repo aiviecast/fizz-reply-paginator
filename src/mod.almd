@@ -1,0 +1,81 @@
+// fizz_reply_paginator — AI 返答テキストを表示チャンク(ページ)に分割する(§8 Overlay)。
+//
+// 責務 (一行): text を最大 maxLen 文字以下のチャンクに、文の切れ目優先で分ける。
+//
+// 優先順位 (openaituber overlay/ReplyCard.tsx splitIntoChunks と同一):
+//   1. 後半窓 [maxLen*0.5 .. maxLen] 内の hard break (。！？.!?) で切る (文の境目)
+//   2. 同窓内の soft break (、,) で切る
+//   3. 無ければ maxLen でハードカット
+//
+// 文字単位は codepoint (string.chars)。日本語 BMP は 1 char = 1 codepoint で JS の
+// UTF-16 単位と一致する。React の描画/タイプライタ演出は TS、分割ロジックは Almide。
+//
+// 出力は **cut points (各チャンクの終端 char index、累積)**。wasm はこの Int 列を返し、
+// ブラウザが text をその位置で slice する(部分文字列を wasm 越しに返さない設計)。
+
+import string
+import list
+
+fn hard_breaks() -> List[String] = ["。", "！", "？", ".", "!", "?"]
+fn soft_breaks() -> List[String] = ["、", ","]
+
+local fn char_at(chars: List[String], i: Int) -> String = list.get(chars, i) ?? ""
+
+// chars[lo..hi) を後ろから探し、breaks に含まれる文字の「次の位置」を返す。無ければ -1。
+local fn rfind_break(chars: List[String], lo: Int, hi: Int, breaks: List[String]) -> Int = {
+  var i = hi - 1
+  var found = 0 - 1
+  while i >= lo and found < 0 {
+    if list.contains(breaks, char_at(chars, i)) then found = i + 1 else ()
+    i = i - 1
+  }
+  found
+}
+
+// text を分割するチャンク終端 char index の列(累積、最後は text 長)。
+fn cut_points(text: String, maxLen: Int) -> List[Int] = {
+  let chars = string.chars(text)
+  let n = list.len(chars)
+  if maxLen < 1 or n <= maxLen then [n]
+  else {
+    var cuts: List[Int] = []
+    var pos = 0
+    while pos < n {
+      let remaining = n - pos
+      if remaining <= maxLen then {
+        cuts = cuts + [n]
+        pos = n
+      } else {
+        let ws = pos + (if maxLen / 2 < 1 then 1 else maxLen / 2)
+        let we = pos + maxLen
+        let h = rfind_break(chars, ws, we, hard_breaks())
+        let split_at = if h >= 0 then h
+                       else {
+                         let sf = rfind_break(chars, ws, we, soft_breaks())
+                         if sf >= 0 then sf else we
+                       }
+        cuts = cuts + [split_at]
+        pos = split_at
+      }
+    }
+    cuts
+  }
+}
+
+// チャンク数。
+fn chunk_count(text: String, maxLen: Int) -> Int = list.len(cut_points(text, maxLen))
+
+// text を実際のチャンク文字列に分ける(native / テスト用。ブラウザは cut_points で slice)。
+fn split(text: String, maxLen: Int) -> List[String] = {
+  let pts = cut_points(text, maxLen)
+  var chunks: List[String] = []
+  var prev = 0
+  var k = 0
+  while k < list.len(pts) {
+    let p = list.get(pts, k) ?? prev
+    chunks = chunks + [string.slice(text, prev, p)]
+    prev = p
+    k = k + 1
+  }
+  chunks
+}
