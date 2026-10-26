@@ -34,7 +34,7 @@ local fn rfind_break(chars: List[String], lo: Int, hi: Int, breaks: List[String]
 
 // text を分割するチャンク終端 char index の列(累積、最後は text 長)。
 fn cut_points(text: String, maxLen: Int) -> List[Int] = {
-  let chars = string.chars(text)
+  let chars = string.to_list(text)
   let n = list.len(chars)
   if maxLen < 1 or n <= maxLen then [n]
   else {

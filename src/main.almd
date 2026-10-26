@@ -8,7 +8,7 @@ import int
 effect fn main() -> Unit = {
   var open = true
   while open {
-    let line = io.read_line()
+    let line = io.read_line() ?? ""
     if string.trim(line) == "" then { open = false }
     else {
       let t = string.trim(line)
